@@ -1,6 +1,6 @@
 
 #define _DEFAULT_SOURCE
-#include <stdio.h>A
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -539,4 +539,5 @@ int process_server_messages(int tcp_socket, pthread_t update_thread) {
     close(tcp_socket); // Close the TCP socket
     printf("Socket closed after receiving updates.\n");
     return 0;
+
 }
