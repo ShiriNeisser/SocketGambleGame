@@ -1,3 +1,5 @@
+<img width="2000" height="1125" alt="image" src="https://github.com/user-attachments/assets/cd01ed08-634f-4f53-b767-e60edc3ca08f" />
+
 # SocketGambleGame
 SocketGambleGame is a multiplayer server-client application where users place bets on simulated matches. It uses TCP for client communication and UDP multicast for game updates, showcasing socket programming and basic betting logic in a networked environment.
 ## Requirements
