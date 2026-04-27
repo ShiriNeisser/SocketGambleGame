@@ -1,5 +1,5 @@
 #include "server.h"
-
+#include <stdint.h>
 // ─── Team Assignment ──────────────────────────────────────────────────────────
 
 void shuffle_countries(char *shuffled[], int n) {
@@ -42,7 +42,7 @@ void format_game_update(char *update, size_t buf_size, const GameState *gs) {
 // ─── Game Simulation Thread ───────────────────────────────────────────────────
 
 void *simulate_game(void *arg) {
-    int server_fd = (int)(intptr_t)arg;
+    int server_fd = (int)(intptr_t) arg;
 
     pthread_mutex_lock(&lock);
     game_state.current_minute = 0;
