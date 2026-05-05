@@ -17,8 +17,7 @@ void *handle_client_requests(void *arg) {
                 pthread_mutex_lock(&lock);
                 client->last_keep_alive = time(NULL);
                 pthread_mutex_unlock(&lock);
-                if (print_keep_alive_prints)
-                    printf("Keep-alive received from client %d.\n", client->client_id);
+          
 
             } else if (strstr(buffer, "CLIENT_TERMINATED")) {
                 printf("Client %d terminated the connection.\n", client->client_id);
@@ -78,9 +77,9 @@ void *handle_new_client(void *arg) {
     Client *client = (Client *)arg;
     char buffer[BUFFER_SIZE];
 
-    int remaining_time = GAME_DURATION - difftime(time(NULL), start_time);
-    int ret = snprintf(buffer, BUFFER_SIZE, "WELCOME_DATA:%s:%s:%d",
-                       game_state.group1, game_state.group2, remaining_time);
+int remaining_time = GAME_DURATION - difftime(time(NULL), client->ctx->start_time);
+int ret = snprintf(buffer, BUFFER_SIZE, "WELCOME_DATA:%s:%s:%d",
+                       client->ctx->game_state.group1, client->ctx->game_state.group2, remaining_time);
     if (ret >= BUFFER_SIZE)
         snprintf(buffer, BUFFER_SIZE, "WELCOME_DATA:Team1:Team2:0");
 
@@ -133,7 +132,7 @@ void *handle_new_client(void *arg) {
 
         ret = snprintf(buffer, BUFFER_SIZE,
                        "Password accepted. Place your bet (0): tie, (1): %s, (2): %s) and amount (BY DOLLARS): ",
-                       game_state.group1, game_state.group2);
+                       client->ctx->game_state.group1, client->ctx->game_state.group2);
         if (ret >= BUFFER_SIZE)
             snprintf(buffer, BUFFER_SIZE, "Password accepted. Place your bet (0: tie, 1: Team 1, 2: Team 2) and amount: ");
         send(client->socket, buffer, strlen(buffer), 0);
@@ -178,9 +177,10 @@ void send_final_message(Client *client, int wrong_message) {
         return;
 
     char result[BUFFER_SIZE];
+    GameState *gs = &client->ctx->game_state;
     const char *correct_group = (client->bet_team == 0) ? "tie"
-                              : (client->bet_team == 1) ? game_state.group1
-                              :                           game_state.group2;
+                              : (client->bet_team == 1) ? gs->group1
+                              :                           gs->group2;
 
     printf("Preparing to send final message to client %d.\n", client->client_id);
 
@@ -189,20 +189,20 @@ void send_final_message(Client *client, int wrong_message) {
         Client temp      = *client;
         temp.bet_team    = (client->bet_team + 1) % 3;
         const char *wg   = (temp.bet_team == 0) ? "tie"
-                         : (temp.bet_team == 1) ? game_state.group1
-                         :                        game_state.group2;
-        int won = (temp.bet_team == 1 && game_state.score[0] > game_state.score[1]) ||
-                  (temp.bet_team == 2 && game_state.score[1] > game_state.score[0]) ||
-                  (temp.bet_team == 0 && game_state.score[0] == game_state.score[1]);
+                         : (temp.bet_team == 1) ? gs->group1
+                         :                        gs->group2;
+        int won = (temp.bet_team == 1 && gs->score[0] > gs->score[1]) ||
+                  (temp.bet_team == 2 && gs->score[1] > gs->score[0]) ||
+                  (temp.bet_team == 0 && gs->score[0] == gs->score[1]);
         snprintf(result, BUFFER_SIZE, won
                  ? "Congratulations! You won your bet of %d $ on %s\n"
                  : "Sorry, you lost your bet of %d $ on %s\n",
                  temp.bet_amount, wg);
         printf("Simulating wrong message for client %d.\n", client->client_id);
     } else {
-        int won = (client->bet_team == 1 && game_state.score[0] > game_state.score[1]) ||
-                  (client->bet_team == 2 && game_state.score[1] > game_state.score[0]) ||
-                  (client->bet_team == 0 && game_state.score[0] == game_state.score[1]);
+        int won = (client->bet_team == 1 && gs->score[0] > gs->score[1]) ||
+                  (client->bet_team == 2 && gs->score[1] > gs->score[0]) ||
+                  (client->bet_team == 0 && gs->score[0] == gs->score[1]);
         snprintf(result, BUFFER_SIZE, won
                  ? "Congratulations! You won your bet of %d $ on %s\n"
                  : "Sorry, you lost your bet of %d $ on %s\n",

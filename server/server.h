@@ -31,6 +31,18 @@
 #define in_prog   1
 #define comptited 2
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+typedef enum {
+    GAME_PHASE_PRE,           // before kickoff: auth + betting
+    GAME_PHASE_FIRST_HALF,
+    GAME_PHASE_HALFTIME,
+    GAME_PHASE_SECOND_HALF,
+    GAME_PHASE_OVER
+} GamePhase;
+
+// ─── Forward declarations ────────────────────────────────────────────────────
+typedef struct ServerContext ServerContext;
+
 // ─── Structs ─────────────────────────────────────────────────────────────────
 typedef struct {
     int socket;
@@ -43,11 +55,9 @@ typedef struct {
     char comments[BUFFER_SIZE];
     int connected;
     time_t last_keep_alive;
+    ServerContext *ctx;         // back-pointer to shared server state
 } Client;
 
-typedef struct {
-    char message;
-} Packet;
 
 typedef struct {
     int score[2];
@@ -56,7 +66,9 @@ typedef struct {
     int halftime;
     char group1[BUFFER_SIZE];
     char group2[BUFFER_SIZE];
+    GamePhase phase;
 } GameState;
+
 
 typedef struct {
     int game_id;
@@ -68,25 +80,24 @@ typedef struct {
     int status;   // waiting / in_prog / comptited
 } GameSession;
 
+// ─── Server-wide context (grows one field at a time as we migrate globals) ──
+struct ServerContext {
+    GameState game_state;
+    time_t start_time;
+
+};
+
 // ─── Globals (defined in globals.c) ──────────────────────────────────────────
 extern pthread_mutex_t lock;
-extern time_t          start_time;
 
 extern Client    *clients[MAX_CLIENTS];
-extern GameState  game_state;
 extern int        client_count;
-extern int        udp_multicast_socket;
-extern struct sockaddr_in multicast_addr;
 
 extern int game_over;
 extern int server_fd_global;
 extern int DebugMode;
-extern int print_keep_alive_prints;
 
-extern GameSession    *all_games[MAX_GAMES];
-extern pthread_mutex_t lobby_lock;
 
-extern const char *countries[];
 #define NUM_COUNTRIES 10
 
 // ─── Test Flags (defined in globals.c) ───────────────────────────────────────
@@ -101,12 +112,12 @@ extern int test_drop_place_bet;
 // ─── Function Prototypes ──────────────────────────────────────────────────────
 
 // network.c
-void  accept_bets(int server_fd);
+void  accept_bets(int server_fd, ServerContext *ctx);
 void  setup_udp_multicast(void);
 void  broadcast_game_update(const char *message);
-void  broadcast_half_time_message(void);
+void  broadcast_half_time_message(ServerContext *ctx);
 void *broadcast_remaining_time(void *arg);
-void  start_game(void);
+void  start_game(ServerContext *ctx);
 void  close_all_client_sockets(void);
 void  notify_clients_of_interruption(void);
 void  handle_signal(int sig);

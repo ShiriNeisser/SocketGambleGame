@@ -1,5 +1,7 @@
 #include "server.h"
 
+static int                udp_multicast_socket;
+static struct sockaddr_in multicast_addr;
 // ─── UDP Multicast Setup ──────────────────────────────────────────────────────
 
 void setup_udp_multicast(void) {
@@ -24,7 +26,7 @@ void broadcast_game_update(const char *message) {
         printf("Broadcasted: %s", message);
 }
 
-void broadcast_half_time_message(void) {
+void broadcast_half_time_message(ServerContext *ctx) {
     char buffer[BUFFER_SIZE];
     snprintf(buffer, BUFFER_SIZE,
              "HALFTIME: Do you want to double your bet? Reply with 'YES' or 'NO'.\n");
@@ -39,7 +41,7 @@ void broadcast_half_time_message(void) {
         send(clients[i]->socket, buffer, strlen(buffer), 0);
         printf("Sent halftime message to client %d.\n", clients[i]->client_id);
     }
-    game_state.halftime = 1;
+    ctx->game_state.halftime = 1;
     pthread_mutex_unlock(&lock);
 
     printf("Broadcasted halftime message to all clients.\n");
@@ -48,12 +50,12 @@ void broadcast_half_time_message(void) {
 // ─── Countdown Broadcast Thread ───────────────────────────────────────────────
 
 void *broadcast_remaining_time(void *arg) {
-    (void)arg;
+    ServerContext *ctx = (ServerContext *)arg;
     char buffer[BUFFER_SIZE];
 
     while (1) {
         pthread_mutex_lock(&lock);
-        int remaining = GAME_DURATION - (int)difftime(time(NULL), start_time);
+        int remaining = GAME_DURATION - (int)difftime(time(NULL), ctx->start_time);
         pthread_mutex_unlock(&lock);
 
         if (remaining < 0) remaining = 0;
@@ -63,8 +65,8 @@ void *broadcast_remaining_time(void *arg) {
         broadcast_game_update(buffer);
         printf("Broadcasted remaining time: %d seconds\n", remaining);
 
-        if (remaining == 0 && !game_state.game_running) {
-            start_game();
+        if (remaining == 0 && !ctx->game_state.game_running) {
+            start_game(ctx);
             break;
         }
         sleep(1);
@@ -74,32 +76,29 @@ void *broadcast_remaining_time(void *arg) {
 
 // ─── Start Game ───────────────────────────────────────────────────────────────
 
-void start_game(void) {
+void start_game(ServerContext *ctx) {
     pthread_t thread;
-    pthread_create(&thread, NULL, simulate_game, (void*)(intptr_t)server_fd_global);
+    pthread_create(&thread, NULL, simulate_game, ctx);
 }
 
 // ─── Accept & Register New Clients ───────────────────────────────────────────
 
-void accept_bets(int server_fd) {
+void accept_bets(int server_fd, ServerContext *ctx) {
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
-
-    start_time = time(NULL);
-    assign_teams(&game_state);
-
+    ctx->start_time = time(NULL);
     pthread_t broadcast_thread;
-    pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, NULL);
+    pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, ctx);
 
     while (1) {
         int new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
         if (new_socket < 0) {
-            if (game_over) break;  
-             continue;
-             }
-    
+            if (game_over) {break; }
+            continue;
+            }
+
         pthread_mutex_lock(&lock);
-        if (game_state.game_running) {
+        if (ctx->game_state.game_running) {
             const char *msg = "The game has already started. You cannot join now.\n";
             send(new_socket, msg, strlen(msg), 0);
             close(new_socket);
@@ -115,6 +114,7 @@ void accept_bets(int server_fd) {
         client->recive_halftime   = 0;
         client->connected         = 0;
         client->last_keep_alive   = time(NULL);
+        client->ctx               = ctx;
         memset(client->comments, 0, BUFFER_SIZE);
         clients[client->client_id] = client;
         printf("Client %d connected.\n", client->client_id);

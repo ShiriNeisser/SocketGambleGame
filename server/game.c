@@ -1,7 +1,10 @@
 #include "server.h"
 #include <stdint.h>
 // ─── Team Assignment ──────────────────────────────────────────────────────────
-
+static const char *countries[] = {
+    "Brazil", "Germany", "Argentina", "France",    "Spain",
+    "Italy",  "England", "Netherlands", "Portugal", "Belgium"
+};
 void shuffle_countries(char *shuffled[], int n) {
     for (int i = n - 1; i > 0; i--) {
         int j      = rand() % (i + 1);
@@ -42,37 +45,43 @@ void format_game_update(char *update, size_t buf_size, const GameState *gs) {
 // ─── Game Simulation Thread ───────────────────────────────────────────────────
 
 void *simulate_game(void *arg) {
-    int server_fd = (int)(intptr_t) arg;
+    ServerContext *ctx = (ServerContext *)arg;
+    int server_fd = server_fd_global;
 
     pthread_mutex_lock(&lock);
-    game_state.current_minute = 0;
-    game_state.score[0]       = 0;
-    game_state.score[1]       = 0;
-    game_state.game_running   = 1;
+    ctx->game_state.current_minute = 0;
+    ctx->game_state.score[0]       = 0;
+    ctx->game_state.score[1]       = 0;
+    ctx->game_state.game_running   = 1;
+    ctx->game_state.phase          = GAME_PHASE_FIRST_HALF;
     pthread_mutex_unlock(&lock);
 
     printf("THE GAME HAS STARTED!\n");
 
     for (int j = 1; j <= GAME_LENGTH; j++) {
         pthread_mutex_lock(&lock);
-        game_state.current_minute = j;
+        ctx->game_state.current_minute = j;
         int scorer = rand() % 2;
         int goal   = rand() % 2;
-        game_state.score[scorer] += goal;
+        ctx->game_state.score[scorer] += goal;
         pthread_mutex_unlock(&lock);
 
         char update[BUFFER_SIZE];
-        format_game_update(update, BUFFER_SIZE, &game_state);
+        format_game_update(update, BUFFER_SIZE, &ctx->game_state);
         broadcast_game_update(update);
         printf("%s", update);
 
         // ─── Halftime ────────────────────────────────────────────────────────
         if (j == GAME_LENGTH / 2) {
             printf("HALF TIME IN THE SIMULATION");
-            broadcast_half_time_message();
+            pthread_mutex_lock(&lock);
+            ctx->game_state.phase = GAME_PHASE_HALFTIME;
+            pthread_mutex_unlock(&lock);
+            broadcast_half_time_message(ctx);
             sleep(HalfTimer_respose);
 
             pthread_mutex_lock(&lock);
+            ctx->game_state.phase = GAME_PHASE_SECOND_HALF;
             for (int i = 0; i < client_count; i++) {
                 if (!clients[i]->recive_halftime) {
                     printf("Client %d did not respond to halftime, assuming 'NO'.\n",
@@ -88,7 +97,8 @@ void *simulate_game(void *arg) {
 
     // ─── End of Game ─────────────────────────────────────────────────────────
     pthread_mutex_lock(&lock);
-    game_state.game_running = 0;
+    ctx->game_state.game_running = 0;
+    ctx->game_state.phase        = GAME_PHASE_OVER;
     pthread_mutex_unlock(&lock);
 
     sleep(2); // Give clients time to receive the last update
@@ -99,7 +109,7 @@ void *simulate_game(void *arg) {
     }
     client_count = 0;
     game_over = 1;
-    close(server_fd); 
+    close(server_fd);
     pthread_exit(NULL);
 }
 

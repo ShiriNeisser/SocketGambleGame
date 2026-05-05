@@ -1,8 +1,10 @@
 #include "server.h"
 
 int main(void) {
+    ServerContext ctx = {0};
+    assign_teams(&ctx.game_state);
+    ctx.game_state.phase = GAME_PHASE_PRE;
     srand(time(NULL));
-
     signal(SIGINT,  handle_signal);
     signal(SIGTSTP, handle_signal);
 
@@ -10,7 +12,7 @@ int main(void) {
 
     // ─── Create TCP socket ────────────────────────────────────────────────────
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == 0) {
+    if (server_fd < 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
@@ -51,7 +53,7 @@ int main(void) {
     printf("Server listening on port %d.\n", PORT);
 
     // ─── Main Loop ────────────────────────────────────────────────────────────
-    accept_bets(server_fd);
+    accept_bets(server_fd, &ctx);
     close_all_client_sockets();
 
     pthread_exit(NULL);
