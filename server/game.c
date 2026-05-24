@@ -1,3 +1,5 @@
+/*
+game.c*/
 #include "server.h"
 #include <stdint.h>
 // ─── Team Assignment ──────────────────────────────────────────────────────────
@@ -46,7 +48,7 @@ void format_game_update(char *update, size_t buf_size, const GameState *gs) {
 
 void *simulate_game(void *arg) {
     ServerContext *ctx = (ServerContext *)arg;
-    int server_fd = server_fd_global;
+    int socket_fd = socket_fd_global;
 
     pthread_mutex_lock(&lock);
     ctx->game_state.current_minute = 0;
@@ -109,7 +111,7 @@ void *simulate_game(void *arg) {
     }
     client_count = 0;
     game_over = 1;
-    close(server_fd);
+    close(socket_fd);
     pthread_exit(NULL);
 }
 

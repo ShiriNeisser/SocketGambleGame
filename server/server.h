@@ -1,3 +1,4 @@
+/*server.h*/
 #ifndef SERVER_H
 #define SERVER_H
 
@@ -11,6 +12,12 @@
 #include <sys/select.h>
 #include <time.h>
 #include <signal.h>
+
+#include <sys/epoll.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define MAX_EVENTS 64
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 #define TEAM_NAME_MAX_LENGTH  100
@@ -40,6 +47,13 @@ typedef enum {
     GAME_PHASE_OVER
 } GamePhase;
 
+typedef enum {
+    CLIENT_WAIT_AUTH,
+    CLIENT_WAIT_BET,
+    CLIENT_IN_GAME,
+    CLIENT_DISCONNECTED
+} ClientState;
+
 // ─── Forward declarations ────────────────────────────────────────────────────
 typedef struct ServerContext ServerContext;
 
@@ -56,6 +70,7 @@ typedef struct {
     int connected;
     time_t last_keep_alive;
     ServerContext *ctx;         // back-pointer to shared server state
+    ClientState state;
 } Client;
 
 
@@ -64,8 +79,8 @@ typedef struct {
     int current_minute;
     int game_running;
     int halftime;
-    char group1[BUFFER_SIZE];
-    char group2[BUFFER_SIZE];
+    char group1[TEAM_NAME_MAX_LENGTH];
+    char group2[TEAM_NAME_MAX_LENGTH];
     GamePhase phase;
 } GameState;
 
@@ -94,7 +109,7 @@ extern Client    *clients[MAX_CLIENTS];
 extern int        client_count;
 
 extern int game_over;
-extern int server_fd_global;
+extern int socket_fd_global;
 extern int DebugMode;
 
 
@@ -112,7 +127,7 @@ extern int test_drop_place_bet;
 // ─── Function Prototypes ──────────────────────────────────────────────────────
 
 // network.c
-void  accept_bets(int server_fd, ServerContext *ctx);
+void  accept_bets(int socket_fd, ServerContext *ctx);
 void  setup_udp_multicast(void);
 void  broadcast_game_update(const char *message);
 void  broadcast_half_time_message(ServerContext *ctx);
@@ -134,5 +149,27 @@ void  shuffle_countries(char *shuffled[], int n);
 void  assign_teams(GameState *gs);
 void  format_game_update(char *update, size_t buf_size, const GameState *gs);
 /* void *check_keep_alive(void *arg); // currently disabled */
+
+Client *find_client_by_socket(int socket);
+
+void handle_new_connection(int socket_fd,
+                           int epoll_fd,
+                           ServerContext *ctx);
+
+void handle_client_event(int client_fd,
+                         int epoll_fd);
+
+void handle_auth_message(Client *client,
+                         char *buffer);
+
+void handle_bet_message(Client *client,
+                        char *buffer);
+
+void handle_game_message(Client *client,
+                         char *buffer);
+
+void make_socket_nonblocking(int fd);
+
+void handle_new_connection(int socket_fd, int epoll_fd, ServerContext *ctx);
 
 #endif // SERVER_H

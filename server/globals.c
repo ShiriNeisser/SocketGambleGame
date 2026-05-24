@@ -1,3 +1,5 @@
+/*global.c
+*/
 #include "server.h"
 
 // ─── Mutex & Timing ───────────────────────────────────────────────────────────
@@ -32,4 +34,4 @@ int test_drop_password              = 0;  // TO-DO
 int test_drop_place_bet             = 0;  // TO-DO
 
 int game_over        = 0;
-int server_fd_global = 0;
+int socket_fd_global = 0;

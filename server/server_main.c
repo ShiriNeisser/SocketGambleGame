@@ -1,3 +1,4 @@
+/*server_main.c*/
 #include "server.h"
 
 int main(void) {
@@ -5,24 +6,24 @@ int main(void) {
     assign_teams(&ctx.game_state);
     ctx.game_state.phase = GAME_PHASE_PRE;
     srand(time(NULL));
-    signal(SIGINT,  handle_signal);
-    signal(SIGTSTP, handle_signal);
+    //signal(SIGINT,  handle_signal);
+   // signal(SIGTSTP, handle_signal);
 
     pthread_mutex_init(&lock, NULL);
 
     // ─── Create TCP socket ────────────────────────────────────────────────────
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
-    server_fd_global = server_fd;  
+    socket_fd_global = socket_fd;  
     printf("TCP socket created.\n");
 
     int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         perror("setsockopt");
-        close(server_fd);
+        close(socket_fd);
         exit(EXIT_FAILURE);
     }
 
@@ -33,9 +34,9 @@ int main(void) {
         .sin_port        = htons(PORT)
     };
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    if (bind(socket_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
         perror("bind failed");
-        close(server_fd);
+        close(socket_fd);
         exit(EXIT_FAILURE);
     }
     printf("Socket bound on port %d.\n", PORT);
@@ -45,15 +46,15 @@ int main(void) {
     printf("UDP multicast ready.\n");
 
     // ─── Listen ───────────────────────────────────────────────────────────────
-    if (listen(server_fd, 3) < 0) {
+    if (listen(socket_fd, 3) < 0) {
         perror("listen");
-        close(server_fd);
+        close(socket_fd);
         exit(EXIT_FAILURE);
     }
     printf("Server listening on port %d.\n", PORT);
 
     // ─── Main Loop ────────────────────────────────────────────────────────────
-    accept_bets(server_fd, &ctx);
+    accept_bets(socket_fd, &ctx);
     close_all_client_sockets();
 
     pthread_exit(NULL);

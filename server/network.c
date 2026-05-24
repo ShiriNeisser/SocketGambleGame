@@ -1,3 +1,4 @@
+/*network.c*/
 #include "server.h"
 
 static int                udp_multicast_socket;
@@ -83,51 +84,67 @@ void start_game(ServerContext *ctx) {
 
 // ─── Accept & Register New Clients ───────────────────────────────────────────
 
-void accept_bets(int server_fd, ServerContext *ctx) {
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(address);
+void make_socket_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl F_GETFL");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl F_SETFL");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void accept_bets(int socket_fd, ServerContext *ctx) {
     ctx->start_time = time(NULL);
+
+    make_socket_nonblocking(socket_fd);
+
     pthread_t broadcast_thread;
     pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, ctx);
 
-    while (1) {
-        int new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
-        if (new_socket < 0) {
-            if (game_over) {break; }
-            continue;
-            }
-
-        pthread_mutex_lock(&lock);
-        if (ctx->game_state.game_running) {
-            const char *msg = "The game has already started. You cannot join now.\n";
-            send(new_socket, msg, strlen(msg), 0);
-            close(new_socket);
-            printf("Client attempted to join after game started.\n");
-            pthread_mutex_unlock(&lock);
-            continue;
-        }
-        Client *client            = malloc(sizeof(Client));
-        client->socket            = new_socket;
-        client->address           = address;
-        client->client_id         = client_count++;
-        client->bet_received      = 0;
-        client->recive_halftime   = 0;
-        client->connected         = 0;
-        client->last_keep_alive   = time(NULL);
-        client->ctx               = ctx;
-        memset(client->comments, 0, BUFFER_SIZE);
-        clients[client->client_id] = client;
-        printf("Client %d connected.\n", client->client_id);
-        pthread_mutex_unlock(&lock);
-
-        pthread_t client_thread;
-        pthread_create(&client_thread, NULL, handle_new_client, client);
-        pthread_detach(client_thread);
+    int epoll_fd = epoll_create1(0);
+    if (epoll_fd == -1) {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
     }
 
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.fd = socket_fd;
+
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_fd, &ev) == -1) {
+        perror("epoll_ctl socket_fd");
+        exit(EXIT_FAILURE);
+    }
+
+    struct epoll_event events[MAX_EVENTS];
+
+    while (!game_over) {
+        int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+
+        if (nfds == -1) {
+            if (errno == EINTR) continue;
+            perror("epoll_wait");
+            break;
+        }
+
+        for (int i = 0; i < nfds; i++) {
+            int fd = events[i].data.fd;
+
+            if (fd == socket_fd) {
+                handle_new_connection(socket_fd, epoll_fd, ctx);
+            } 
+            else {
+                handle_client_event(fd,epoll_fd);
+            }
+        }
+    }
+    close(epoll_fd);
     pthread_join(broadcast_thread, NULL);
 }
-
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
 void close_all_client_sockets(void) {
