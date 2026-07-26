@@ -1,5 +1,28 @@
 #include "client.h"
 
+static int wait_for_stdin_or_server(int sock, int timeout_sec) {
+    fd_set readfds;
+    struct timeval tv = { .tv_sec = timeout_sec, .tv_usec = 0 };
+
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
+    FD_SET(sock, &readfds);
+
+    int maxfd = (sock > STDIN_FILENO) ? sock : STDIN_FILENO;
+    int ready = select(maxfd + 1, &readfds, NULL, NULL, &tv);
+    if (ready <= 0)
+        return ready;
+
+    if (FD_ISSET(sock, &readfds)) {
+        char probe;
+        int bytes = recv(sock, &probe, 1, MSG_PEEK);
+        if (bytes <= 0)
+            return -1;
+    }
+
+    return FD_ISSET(STDIN_FILENO, &readfds) ? 1 : 0;
+}
+
 // ─── TCP Connection ───────────────────────────────────────────────────────────
 
 int setup_tcp_connection(void) {
@@ -63,14 +86,10 @@ int authenticate_with_server(int sock) {
     }
 
     // ─── Send password ────────────────────────────────────────────────────────
-    fd_set readfds;
-    struct timeval tv = { .tv_sec = 15, .tv_usec = 0 };
-    FD_ZERO(&readfds);
-    FD_SET(STDIN_FILENO, &readfds);
     fflush(stdout);
 
-    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) <= 0) {
-        printf("Timeout: no password entered within 15 seconds.\n");
+    if (wait_for_stdin_or_server(sock, 15) <= 0) {
+        printf("Server disconnected or timed out before password entry.\n");
         return -1;
     }
 
@@ -107,14 +126,10 @@ int authenticate_with_server(int sock) {
 // ─── Place Bet ────────────────────────────────────────────────────────────────
 
 int place_bet(int sock) {
-    fd_set readfds;
-    struct timeval tv = { .tv_sec = 15, .tv_usec = 0 };
-    FD_ZERO(&readfds);
-    FD_SET(STDIN_FILENO, &readfds);
     fflush(stdout);
 
-    if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) <= 0) {
-        printf("Timeout: no bet placed within 15 seconds.\n");
+    if (wait_for_stdin_or_server(sock, 15) <= 0) {
+        printf("Server disconnected or timed out before bet entry.\n");
         return -1;
     }
 
