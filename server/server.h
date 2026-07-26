@@ -11,6 +11,8 @@
 #include <sys/select.h>
 #include <time.h>
 #include <signal.h>
+#include <errno.h>
+
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 #define TEAM_NAME_MAX_LENGTH  100
@@ -26,6 +28,7 @@
 #define BET_TIMEOUT_SEC       15
 #define HalfTimer_respose     10          // Seconds to wait for halftime response
 #define MAX_GAMES             5
+#define ACCEPT_POLL_INTERVAL_SEC  1   
 
 #define waiting   0
 #define in_prog   1

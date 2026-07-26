@@ -92,6 +92,22 @@ void accept_bets(int server_fd) {
     pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, NULL);
 
     while (1) {
+
+        fd_set readfds;
+        struct timeval tv = { .tv_sec = ACCEPT_POLL_INTERVAL_SEC, .tv_usec = 0 };
+        FD_ZERO(&readfds);
+        FD_SET(server_fd, &readfds);
+        int ready = select(server_fd + 1, &readfds, NULL, NULL, &tv);
+        if (ready == 0) {                 // timeout -
+            if (game_over) break;         //
+            continue;
+        }
+        if (ready < 0) {
+            if (errno == EINTR) continue;
+            perror("select");
+            break;
+        }
+
         int new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
         if (new_socket < 0) {
             if (game_over) break;  
