@@ -202,12 +202,11 @@ void send_final_message(Client *client, int wrong_message) {
     send(client->socket, result, strlen(result), 0);
     printf("Sent final message to client %d.\n", client->client_id);
 
-    /* Non-blocking path — no sleep on the worker */
-    close(client->socket);
-    client->socket = -1;
+    /* Half-close so the client can still drain the final payload */
+    shutdown(client->socket, SHUT_WR);
     client->connected = 0;
     client->state = CLIENT_DISCONNECTED;
-    printf("Client %d disconnected. Socket closed.\n", client->client_id);
+    printf("Client %d final sent (write half-closed).\n", client->client_id);
 }
 
 Client *find_client_by_socket(int socket) {

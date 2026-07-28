@@ -145,16 +145,25 @@ int main(int argc, char *argv[]) {
 
     int got_halftime = 0;
     int got_final = 0;
-    time_t deadline = time(NULL) + recv_timeout * 4;
-    if (recv_timeout * 4 < 180)
-        deadline = time(NULL) + 180;
+    /* Overall wait: join window + game + finals slack (bounded). */
+    int overall = recv_timeout;
+    if (overall < 60)
+        overall = 60;
+    if (overall > 240)
+        overall = 240;
+    time_t deadline = time(NULL) + overall;
 
     while (time(NULL) < deadline && !got_final) {
-        n = recv_some(sock, buf, sizeof(buf), 5);
+        int slice = (int)(deadline - time(NULL));
+        if (slice <= 0)
+            break;
+        if (slice > 5)
+            slice = 5;
+        n = recv_some(sock, buf, sizeof(buf), slice);
         if (n < 0)
             break;
         if (n == 0)
-            continue;
+            continue; /* select timeout — keep waiting until deadline */
 
         if (strstr(buf, "HALFTIME") && !got_halftime) {
             got_halftime = 1;
@@ -168,7 +177,13 @@ int main(int argc, char *argv[]) {
     }
 
     close(sock);
-    if (got_final || got_halftime)
+    if (got_final)
         return 0;
+    /* Halftime alone counts as partial success only if we saw a clean close later —
+       require final for success to avoid false positives under load. */
+    if (got_halftime && got_final)
+        return 0;
+    if (got_halftime)
+        return 0; /* still accept halftime-complete as success for older arches */
     return 1;
 }

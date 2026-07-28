@@ -23,7 +23,7 @@ EDGE_CSV="$BIN_DIR/edge_results.csv"
 PORT=8084
 HOST=127.0.0.1
 BENCH_MAX_CLIENTS="${BENCH_MAX_CLIENTS:-1024}"
-BENCH_GAME_DURATION="${BENCH_GAME_DURATION:-20}"
+BENCH_GAME_DURATION="${BENCH_GAME_DURATION:-30}"
 BENCH_GAME_LENGTH="${BENCH_GAME_LENGTH:-10}"
 BENCH_HALFTIME="${BENCH_HALFTIME:-2}"
 BENCH_LISTEN_BACKLOG="${BENCH_LISTEN_BACKLOG:-512}"
@@ -228,20 +228,23 @@ run_one() {
   local rejected=0
   local pids=()
 
-  # Default client timeout scales with N (finals on older arches sleep 1s/client)
-  local client_timeout=$((90 + num_clients * 2))
-  if [[ $client_timeout -gt 900 ]]; then
-    client_timeout=900
+  # Client timeout must cover per-client final sleeps on older architectures
+  local client_timeout=$((BENCH_GAME_DURATION + BENCH_GAME_LENGTH + BENCH_HALFTIME + 40 + num_clients * 2))
+  if [[ $client_timeout -lt 90 ]]; then
+    client_timeout=90
+  fi
+  if [[ $client_timeout -gt 1200 ]]; then
+    client_timeout=1200
   fi
   export AUTO_RECV_TIMEOUT_SEC="$client_timeout"
 
-  # Apply any extra env from caller (late-join delays etc. handled outside)
+  local pids=()
   for i in $(seq 1 "$num_clients"); do
     (
       set +e
-      "$SCRIPT_DIR/auto_client" "$HOST" "$PORT" >/dev/null 2>&1
-      ec=$?
-      exit $ec
+      timeout --signal=KILL "$((client_timeout + 15))"s \
+        "$SCRIPT_DIR/auto_client" "$HOST" "$PORT" >/dev/null 2>&1
+      exit $?
     ) &
     pids+=($!)
   done
@@ -251,6 +254,7 @@ run_one() {
     wait "$pid"
     ec=$?
     set -e
+    # timeout(1) returns 137 on KILL
     if [[ $ec -eq 0 ]]; then
       ok=$((ok + 1))
     elif [[ $ec -eq 3 ]]; then
