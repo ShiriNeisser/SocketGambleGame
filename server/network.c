@@ -1,6 +1,9 @@
+/*network.c*/
 #include "server.h"
+#include "thread_pool.h"
 
-// ─── UDP Multicast Setup ──────────────────────────────────────────────────────
+static int                udp_multicast_socket;
+static struct sockaddr_in multicast_addr;
 
 void setup_udp_multicast(void) {
     if ((udp_multicast_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -14,8 +17,6 @@ void setup_udp_multicast(void) {
     multicast_addr.sin_port        = htons(MULTICAST_PORT);
 }
 
-// ─── Broadcast Helpers ────────────────────────────────────────────────────────
-
 void broadcast_game_update(const char *message) {
     if (sendto(udp_multicast_socket, message, strlen(message), 0,
                (struct sockaddr *)&multicast_addr, sizeof(multicast_addr)) < 0)
@@ -24,47 +25,49 @@ void broadcast_game_update(const char *message) {
         printf("Broadcasted: %s", message);
 }
 
-void broadcast_half_time_message(void) {
+void broadcast_half_time_message(ServerContext *ctx) {
     char buffer[BUFFER_SIZE];
     snprintf(buffer, BUFFER_SIZE,
              "HALFTIME: Do you want to double your bet? Reply with 'YES' or 'NO'.\n");
 
     pthread_mutex_lock(&lock);
     for (int i = 0; i < client_count; i++) {
-        if (!clients[i]->connected) continue;
+        if (!clients[i] || !clients[i]->connected)
+            continue;
         if (test_drop_halftime) {
-            printf("Simulating dropped halftime message for client %d.\n", clients[i]->client_id);
+            printf("Simulating dropped halftime message for client %d.\n",
+                   clients[i]->client_id);
             continue;
         }
         send(clients[i]->socket, buffer, strlen(buffer), 0);
         printf("Sent halftime message to client %d.\n", clients[i]->client_id);
     }
-    game_state.halftime = 1;
+    ctx->game_state.halftime = 1;
     pthread_mutex_unlock(&lock);
 
     printf("Broadcasted halftime message to all clients.\n");
 }
 
-// ─── Countdown Broadcast Thread ───────────────────────────────────────────────
-
 void *broadcast_remaining_time(void *arg) {
-    (void)arg;
+    ServerContext *ctx = (ServerContext *)arg;
     char buffer[BUFFER_SIZE];
 
     while (1) {
         pthread_mutex_lock(&lock);
-        int remaining = GAME_DURATION - (int)difftime(time(NULL), start_time);
+        int remaining = GAME_DURATION - (int)difftime(time(NULL), ctx->start_time);
+        int running = ctx->game_state.game_running;
         pthread_mutex_unlock(&lock);
 
-        if (remaining < 0) remaining = 0;
+        if (remaining < 0)
+            remaining = 0;
 
         snprintf(buffer, BUFFER_SIZE,
                  "Time remaining until the game starts: %d seconds\n", remaining);
         broadcast_game_update(buffer);
         printf("Broadcasted remaining time: %d seconds\n", remaining);
 
-        if (remaining == 0 && !game_state.game_running) {
-            start_game();
+        if (remaining == 0 && !running) {
+            start_game(ctx);
             break;
         }
         sleep(1);
@@ -72,84 +75,90 @@ void *broadcast_remaining_time(void *arg) {
     return NULL;
 }
 
-// ─── Start Game ───────────────────────────────────────────────────────────────
-
-void start_game(void) {
+void start_game(ServerContext *ctx) {
     pthread_t thread;
-    pthread_create(&thread, NULL, simulate_game, (void*)(intptr_t)server_fd_global);
+    pthread_create(&thread, NULL, simulate_game, ctx);
+    pthread_detach(thread);
 }
 
-// ─── Accept & Register New Clients ───────────────────────────────────────────
+void make_socket_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("fcntl F_GETFL");
+        exit(EXIT_FAILURE);
+    }
 
-void accept_bets(int server_fd) {
-    struct sockaddr_in address;
-    socklen_t addrlen = sizeof(address);
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl F_SETFL");
+        exit(EXIT_FAILURE);
+    }
+}
 
-    start_time = time(NULL);
-    assign_teams(&game_state);
+void accept_bets(int socket_fd, ServerContext *ctx) {
+    ctx->start_time = time(NULL);
+
+    if (pool_init() != 0) {
+        fprintf(stderr, "Failed to start thread pool\n");
+        exit(EXIT_FAILURE);
+    }
+
+    make_socket_nonblocking(socket_fd);
 
     pthread_t broadcast_thread;
-    pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, NULL);
+    pthread_create(&broadcast_thread, NULL, broadcast_remaining_time, ctx);
 
-    while (1) {
+    int epoll_fd = epoll_create1(0);
+    if (epoll_fd == -1) {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
+    }
 
-        fd_set readfds;
-        struct timeval tv = { .tv_sec = ACCEPT_POLL_INTERVAL_SEC, .tv_usec = 0 };
-        FD_ZERO(&readfds);
-        FD_SET(server_fd, &readfds);
-        int ready = select(server_fd + 1, &readfds, NULL, NULL, &tv);
-        if (ready == 0) {                 // timeout -
-            if (game_over) break;         //
-            continue;
-        }
-        if (ready < 0) {
-            if (errno == EINTR) continue;
-            perror("select");
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.fd = socket_fd;
+
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_fd, &ev) == -1) {
+        perror("epoll_ctl socket_fd");
+        exit(EXIT_FAILURE);
+    }
+
+    struct epoll_event events[MAX_EVENTS];
+
+    /* Timeout so game_over can be observed without hanging forever */
+    while (!game_over) {
+        int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, 500);
+
+        if (nfds == -1) {
+            if (errno == EINTR)
+                continue;
+            perror("epoll_wait");
             break;
         }
 
-        int new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen);
-        if (new_socket < 0) {
-            if (game_over) break;  
-             continue;
-             }
-    
-        pthread_mutex_lock(&lock);
-        if (game_state.game_running) {
-            const char *msg = "The game has already started. You cannot join now.\n";
-            send(new_socket, msg, strlen(msg), 0);
-            close(new_socket);
-            printf("Client attempted to join after game started.\n");
-            pthread_mutex_unlock(&lock);
-            continue;
-        }
-        Client *client            = malloc(sizeof(Client));
-        client->socket            = new_socket;
-        client->address           = address;
-        client->client_id         = client_count++;
-        client->bet_received      = 0;
-        client->recive_halftime   = 0;
-        client->connected         = 0;
-        client->last_keep_alive   = time(NULL);
-        memset(client->comments, 0, BUFFER_SIZE);
-        clients[client->client_id] = client;
-        printf("Client %d connected.\n", client->client_id);
-        pthread_mutex_unlock(&lock);
+        for (int i = 0; i < nfds; i++) {
+            int fd = events[i].data.fd;
 
-        pthread_t client_thread;
-        pthread_create(&client_thread, NULL, handle_new_client, client);
-        pthread_detach(client_thread);
+            if (fd == socket_fd)
+                handle_new_connection(socket_fd, epoll_fd, ctx);
+            else
+                handle_client_event(fd, epoll_fd);
+        }
     }
 
+    close(epoll_fd);
     pthread_join(broadcast_thread, NULL);
+    pool_shutdown();
 }
-
-// ─── Cleanup ─────────────────────────────────────────────────────────────────
 
 void close_all_client_sockets(void) {
     for (int i = 0; i < client_count; i++) {
-        close(clients[i]->socket);
-        printf("Closed socket for client %d.\n", clients[i]->client_id);
+        if (!clients[i])
+            continue;
+        if (clients[i]->socket >= 0) {
+            close(clients[i]->socket);
+            clients[i]->socket = -1;
+            printf("Closed socket for client %d.\n", clients[i]->client_id);
+        }
     }
 }
 
@@ -157,8 +166,11 @@ void notify_clients_of_interruption(void) {
     char buffer[BUFFER_SIZE];
     snprintf(buffer, BUFFER_SIZE, "The game has been interrupted by the server.\n");
     for (int i = 0; i < client_count; i++) {
+        if (!clients[i] || clients[i]->socket < 0)
+            continue;
         send(clients[i]->socket, buffer, strlen(buffer), 0);
         close(clients[i]->socket);
+        clients[i]->socket = -1;
     }
     printf("All clients notified of interruption.\n");
 }
@@ -169,13 +181,12 @@ void handle_signal(int sig) {
         notify_clients_of_interruption();
         close_all_client_sockets();
         close(udp_multicast_socket);
-        pthread_exit(NULL);
+        game_over = 1;
     }
 }
 
-// ─── Logging ─────────────────────────────────────────────────────────────────
-
 void log_client_message(Client *client, const char *message) {
-    snprintf(client->comments, BUFFER_SIZE, "Client %d sent: %s", client->client_id, message);
+    snprintf(client->comments, BUFFER_SIZE, "Client %d sent: %s",
+             client->client_id, message);
     printf("%s\n", client->comments);
 }
