@@ -1,4 +1,5 @@
 #include "server.h"
+#include "thread_pool.h"
 
 // ─── UDP Multicast Setup ──────────────────────────────────────────────────────
 
@@ -136,9 +137,8 @@ void accept_bets(int server_fd) {
         printf("Client %d connected.\n", client->client_id);
         pthread_mutex_unlock(&lock);
 
-        pthread_t client_thread;
-        pthread_create(&client_thread, NULL, handle_new_client, client);
-        pthread_detach(client_thread);
+        /* Main is the producer: enqueue the client for a pool worker. */
+        thread_pool_submit(&g_pool, client);
     }
 
     pthread_join(broadcast_thread, NULL);
