@@ -2,6 +2,46 @@
 
 # SocketGambleGame
 SocketGambleGame is a multiplayer server-client application where users place bets on simulated matches. It uses TCP for client communication and UDP multicast for game updates, showcasing socket programming and basic betting logic in a networked environment.
+
+## Server Architecture
+
+Three server architectures were built and load-tested against the same protocol: **thread-per-client** (one pthread per connection, blocking `recv`), **event-driven** (single-threaded epoll reactor), and **epoll + thread pool** (epoll reactor dispatching short jobs to a fixed 4-worker pool). `main` now ships the epoll + thread-pool implementation — across every measured scale it finished the match fastest, kept memory flat, and shut down cleanly, while the other two either grew unbounded (threads) or hung after the game (single-threaded epoll's blocking `epoll_wait`/`accept`).
+
+All numbers below are from real runs of `bench/compare_architectures.sh` (10–512 concurrent clients) and a custom burst-latency experiment, not theoretical estimates.
+
+![Wall time to finish a match, by architecture and concurrency](docs/architecture-comparison/wall_time_vs_concurrency.svg)
+
+| Clients | Thread-per-client | Event-driven (epoll only) | Epoll + thread pool |
+|---:|---:|---:|---:|
+| 10  | 65.0s  | 82.0s (hung, exit 124)  | **46.0s** |
+| 50  | 145.0s | 162.0s (hung, exit 124) | **46.0s** |
+| 100 | 245.2s | 260.2s (hung, exit 124) | **45.0s** |
+| 256 | 260.2s (hung, exit 124) | 260.2s (hung, exit 124) | **240.0s*** |
+| 512 | 260.2s (hung, exit 124) | 260.2s (hung, exit 124) | **45.1s** |
+
+\*At 256 clients the pool run had 3 client failures under burst (a join-window race), which extended its wait time; at 512 it recovered to a clean 512/512 in 45s. Exit 124 = the harness had to kill a hung server after the match — both thread-per-client and epoll-only frequently never leave their accept loop once the game ends.
+
+![Peak resident-set size, by architecture and concurrency](docs/architecture-comparison/peak_memory_vs_concurrency.svg)
+
+Memory tells a similar story: thread-per-client grows from 2.2MB to 8.8MB as client count rises (each blocking thread carries its own stack), while both epoll-based architectures stay near 2.2-2.9MB regardless of scale.
+
+**Edge cases** (`BENCH_EDGE=1`, capacity capped at 256, then 306 clients try to connect): both epoll-based servers admit exactly 256 and reject the other 50 with no crash; epoll-only takes 453s to finish (hangs post-game) vs the pool's 45s. A late-join test (20 early clients, 20 joining after kickoff) shows the pool cleanly accepting the 20 early joiners and rejecting the 20 late ones with `"cannot join now"`.
+
+### Known limitation: the pool's fixed worker count
+
+![AUTH message round-trip p95 latency under a connection burst](docs/architecture-comparison/burst_auth_p95_latency.svg)
+
+The one place this architecture can queue under load: `server/thread_pool.c` defines `THREAD_POOL_SIZE 4` — every client message (AUTH, bet, etc.) becomes a job dispatched to exactly 4 worker threads via a shared queue (`JOB_QUEUE_CAPACITY 2048`). A burst experiment — N clients connecting and sending AUTH within the same instant — makes this visible: at N=50 the pool's p95 AUTH round-trip jumps to **~11.4ms** (p99 ~15.0ms), roughly 15-40x the other two architectures at the same burst size, which stay under ~1ms. That's messages queueing behind whichever 4 are already being processed. The 2048-slot queue itself is generous enough that it essentially never blocks the epoll reactor at these scales — the cost shows up as reader-side latency, not a stalled accept loop. Anyone needing lower tail latency under heavy concurrent bursts should look at raising `THREAD_POOL_SIZE` in `server/thread_pool.c`.
+
+| Burst size (clients) | Thread-per-client p95 | Event-driven p95 | Epoll + thread pool p95 |
+|---:|---:|---:|---:|
+| 4   | 0.17ms | 0.12ms | 0.45ms |
+| 8   | 0.23ms | 0.73ms | 0.24ms |
+| 20  | 0.22ms | 0.23ms | 0.38ms |
+| 50  | 0.46ms | 1.10ms | **11.38ms** |
+| 100 | 0.40ms | 0.82ms | 3.25ms |
+| 200 | 0.43ms | 0.45ms | 6.44ms |
+
 ## Requirements
 - **C Compiler**: GCC or any other C compiler
 - **Linux**: Tested on Linux, should work on other Unix-like systems

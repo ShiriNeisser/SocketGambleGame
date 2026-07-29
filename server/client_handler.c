@@ -160,10 +160,7 @@ void *handle_new_client(void *arg) {
             client->connected    = 1;
             client->bet_received = 1;
             log_client_message(client, buffer);
-
-            pthread_t req_thread;
-            pthread_create(&req_thread, NULL, handle_client_requests, client);
-            pthread_detach(req_thread);
+            /* Request loop runs on the same worker thread (see worker_loop). */
         }
         break;
     }

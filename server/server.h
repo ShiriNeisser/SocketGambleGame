@@ -28,7 +28,9 @@
 #define BET_TIMEOUT_SEC       15
 #define HalfTimer_respose     10          // Seconds to wait for halftime response
 #define MAX_GAMES             5
-#define ACCEPT_POLL_INTERVAL_SEC  1   
+#define ACCEPT_POLL_INTERVAL_SEC  1
+#define NUM_WORKERS               4
+#define QUEUE_CAPACITY            MAX_CLIENTS
 
 #define waiting   0
 #define in_prog   1
