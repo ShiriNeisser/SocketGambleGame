@@ -3,7 +3,7 @@
 
 #include "server.h"
 
-#define THREAD_POOL_SIZE   4
+#define THREAD_POOL_MIN_WORKERS 4  /* floor if core-count detection fails */
 #define JOB_QUEUE_CAPACITY 2048
 
 typedef enum {
@@ -28,7 +28,8 @@ typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t  not_empty;
     pthread_cond_t  not_full;
-    pthread_t       workers[THREAD_POOL_SIZE];
+    pthread_t      *workers;    /* heap-allocated, sized at pool_init() time */
+    int             num_workers;
     int             shutdown;
     int             started;
 } ThreadPool;

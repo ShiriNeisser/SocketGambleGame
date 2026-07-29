@@ -83,6 +83,13 @@ static void *worker_main(void *arg) {
     return NULL;
 }
 
+static int detect_worker_count(void) {
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    if (n < THREAD_POOL_MIN_WORKERS)
+        n = THREAD_POOL_MIN_WORKERS;
+    return (int)n;
+}
+
 int pool_init(void) {
     memset(&g_pool, 0, sizeof(g_pool));
     if (pthread_mutex_init(&g_pool.mutex, NULL) != 0)
@@ -94,19 +101,25 @@ int pool_init(void) {
 
     g_pool.shutdown = 0;
     g_pool.started = 0;
+    g_pool.num_workers = detect_worker_count();
+    g_pool.workers = malloc(sizeof(pthread_t) * (size_t)g_pool.num_workers);
+    if (!g_pool.workers)
+        return -1;
 
-    for (int i = 0; i < THREAD_POOL_SIZE; i++) {
+    for (int i = 0; i < g_pool.num_workers; i++) {
         if (pthread_create(&g_pool.workers[i], NULL, worker_main, NULL) != 0) {
             g_pool.shutdown = 1;
             pthread_cond_broadcast(&g_pool.not_empty);
             for (int j = 0; j < i; j++)
                 pthread_join(g_pool.workers[j], NULL);
+            free(g_pool.workers);
+            g_pool.workers = NULL;
             return -1;
         }
     }
     g_pool.started = 1;
     printf("Thread pool started: %d workers, queue capacity %d\n",
-           THREAD_POOL_SIZE, JOB_QUEUE_CAPACITY);
+           g_pool.num_workers, JOB_QUEUE_CAPACITY);
     return 0;
 }
 
@@ -141,8 +154,10 @@ void pool_shutdown(void) {
     pthread_cond_broadcast(&g_pool.not_full);
     pthread_mutex_unlock(&g_pool.mutex);
 
-    for (int i = 0; i < THREAD_POOL_SIZE; i++)
+    for (int i = 0; i < g_pool.num_workers; i++)
         pthread_join(g_pool.workers[i], NULL);
+    free(g_pool.workers);
+    g_pool.workers = NULL;
 
     /* Drain any leftover jobs so messages are freed */
     pthread_mutex_lock(&g_pool.mutex);
