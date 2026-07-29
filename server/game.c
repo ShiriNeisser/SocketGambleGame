@@ -66,10 +66,12 @@ void *simulate_game(void *arg) {
         ctx->game_state.score[scorer] += goal;
         pthread_mutex_unlock(&lock);
 
-        char update[BUFFER_SIZE];
-        format_game_update(update, BUFFER_SIZE, &ctx->game_state);
-        broadcast_game_update(update);
-        printf("%s", update);
+        if (goal) {
+            char update[BUFFER_SIZE];
+            format_game_update(update, BUFFER_SIZE, &ctx->game_state);
+            broadcast_game_update(update);
+            printf("%s", update);
+        }
 
         if (j == GAME_LENGTH / 2) {
             printf("HALF TIME IN THE SIMULATION\n");
