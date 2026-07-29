@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="720" height="380" fill="#fcfcfb"/>
+<text x="60" y="18" font-size="15" font-weight="600" fill="#0b0b0b">Time to finish a full match</text>
+<line x1="60" x2="696" y1="330.0" y2="330.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="52" y="334.0" font-size="11" fill="#898781" text-anchor="end">0s</text>
+<line x1="60" x2="696" y1="268.8" y2="268.8" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="272.8" font-size="11" fill="#898781" text-anchor="end">50s</text>
+<line x1="60" x2="696" y1="207.6" y2="207.6" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="211.6" font-size="11" fill="#898781" text-anchor="end">100s</text>
+<line x1="60" x2="696" y1="146.4" y2="146.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="150.4" font-size="11" fill="#898781" text-anchor="end">150s</text>
+<line x1="60" x2="696" y1="85.2" y2="85.2" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="89.2" font-size="11" fill="#898781" text-anchor="end">200s</text>
+<line x1="60" x2="696" y1="24.0" y2="24.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="28.0" font-size="11" fill="#898781" text-anchor="end">250s</text>
+<text x="60.0" y="348" font-size="11" fill="#898781" text-anchor="middle">10</text>
+<text x="320.1" y="348" font-size="11" fill="#898781" text-anchor="middle">50</text>
+<text x="432.1" y="348" font-size="11" fill="#898781" text-anchor="middle">100</text>
+<text x="584.0" y="348" font-size="11" fill="#898781" text-anchor="middle">256</text>
+<text x="696.0" y="348" font-size="11" fill="#898781" text-anchor="middle">512</text>
+<text x="378.0" y="372" font-size="11" fill="#898781" text-anchor="middle">concurrent clients</text>
+<text x="10" y="32" font-size="11" fill="#898781">seconds</text>
+<path d="M60.0,250.4 L320.1,152.5 L432.1,29.9 L584.0,11.5 L696.0,11.5" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="250.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="320.1" cy="152.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="432.1" cy="29.9" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="584.0" cy="11.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="11.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<path d="M60.0,229.6 L320.1,131.7 L432.1,11.5 L584.0,11.5 L696.0,11.5" fill="none" stroke="#eb6834" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="229.6" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="320.1" cy="131.7" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="432.1" cy="11.5" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="584.0" cy="11.5" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="11.5" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<path d="M60.0,273.7 L320.1,273.7 L432.1,274.9 L584.0,36.3 L696.0,274.8" fill="none" stroke="#1baf7a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="273.7" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="320.1" cy="273.7" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="432.1" cy="274.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="584.0" cy="36.3" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="274.8" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="60" y="352" width="14" height="3" rx="1.5" fill="#2a78d6"/>
+<text x="80" y="355" font-size="11" fill="#0b0b0b">Thread-per-client</text>
+<rect x="209.4" y="352" width="14" height="3" rx="1.5" fill="#eb6834"/>
+<text x="229.4" y="355" font-size="11" fill="#0b0b0b">Event-driven (epoll only)</text>
+<rect x="408.4" y="352" width="14" height="3" rx="1.5" fill="#1baf7a"/>
+<text x="428.4" y="355" font-size="11" fill="#0b0b0b">Epoll + thread pool</text>
+</svg>

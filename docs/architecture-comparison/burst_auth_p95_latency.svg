@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="720" height="380" fill="#fcfcfb"/>
+<text x="60" y="18" font-size="15" font-weight="600" fill="#0b0b0b">AUTH round-trip p95 latency under a connection burst</text>
+<line x1="60" x2="696" y1="330.0" y2="330.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="52" y="334.0" font-size="11" fill="#898781" text-anchor="end">0</text>
+<line x1="60" x2="696" y1="279.0" y2="279.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="283.0" font-size="11" fill="#898781" text-anchor="end">2</text>
+<line x1="60" x2="696" y1="228.0" y2="228.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="232.0" font-size="11" fill="#898781" text-anchor="end">4</text>
+<line x1="60" x2="696" y1="177.0" y2="177.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="181.0" font-size="11" fill="#898781" text-anchor="end">6</text>
+<line x1="60" x2="696" y1="126.0" y2="126.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="130.0" font-size="11" fill="#898781" text-anchor="end">8</text>
+<line x1="60" x2="696" y1="75.0" y2="75.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="79.0" font-size="11" fill="#898781" text-anchor="end">10</text>
+<line x1="60" x2="696" y1="24.0" y2="24.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="52" y="28.0" font-size="11" fill="#898781" text-anchor="end">12</text>
+<text x="60.0" y="348" font-size="11" fill="#898781" text-anchor="middle">4</text>
+<text x="172.7" y="348" font-size="11" fill="#898781" text-anchor="middle">8</text>
+<text x="321.7" y="348" font-size="11" fill="#898781" text-anchor="middle">20</text>
+<text x="470.6" y="348" font-size="11" fill="#898781" text-anchor="middle">50</text>
+<text x="583.3" y="348" font-size="11" fill="#898781" text-anchor="middle">100</text>
+<text x="696.0" y="348" font-size="11" fill="#898781" text-anchor="middle">200</text>
+<text x="378.0" y="372" font-size="11" fill="#898781" text-anchor="middle">concurrent clients (burst)</text>
+<text x="10" y="32" font-size="11" fill="#898781">ms (p95)</text>
+<path d="M60.0,325.7 L172.7,324.0 L321.7,324.5 L470.6,318.4 L583.3,319.9 L696.0,319.0" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="325.7" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="172.7" cy="324.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="321.7" cy="324.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="470.6" cy="318.4" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="583.3" cy="319.9" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="319.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<path d="M60.0,327.0 L172.7,311.4 L321.7,324.1 L470.6,302.0 L583.3,309.1 L696.0,318.5" fill="none" stroke="#eb6834" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="327.0" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="172.7" cy="311.4" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="321.7" cy="324.1" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="470.6" cy="302.0" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="583.3" cy="309.1" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="318.5" r="4.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<path d="M60.0,318.5 L172.7,324.0 L321.7,320.4 L470.6,39.9 L583.3,247.2 L696.0,165.9" fill="none" stroke="#1baf7a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="60.0" cy="318.5" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="172.7" cy="324.0" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="321.7" cy="320.4" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="470.6" cy="39.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="583.3" cy="247.2" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="696.0" cy="165.9" r="4.5" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="60" y="352" width="14" height="3" rx="1.5" fill="#2a78d6"/>
+<text x="80" y="355" font-size="11" fill="#0b0b0b">Thread-per-client</text>
+<rect x="209.4" y="352" width="14" height="3" rx="1.5" fill="#eb6834"/>
+<text x="229.4" y="355" font-size="11" fill="#0b0b0b">Event-driven (epoll only)</text>
+<rect x="408.4" y="352" width="14" height="3" rx="1.5" fill="#1baf7a"/>
+<text x="428.4" y="355" font-size="11" fill="#0b0b0b">Epoll + thread pool</text>
+</svg>
