@@ -300,6 +300,16 @@ void handle_game_message(Client *client, char *buffer) {
                client->client_id, strstr(buffer, "YES") ? "YES" : "NO");
     } else if (strncmp(buffer, "REQUEST_FINAL_MESSAGE", 21) == 0) {
         send_final_message(client, 0);
+    } else if (strstr(buffer, "REQUEST_GAME_STATE")) {
+        /* On-demand pull of current game state over TCP - a reliable
+         * complement to the (unreliable, goal-only) UDP broadcast, available
+         * at any time in normal operation, not gated to any test flag. */
+        char state_msg[BUFFER_SIZE];
+        pthread_mutex_lock(&lock);
+        format_game_update(state_msg, BUFFER_SIZE, &client->ctx->game_state);
+        pthread_mutex_unlock(&lock);
+        send(client->socket, state_msg, strlen(state_msg), 0);
+        printf("Client %d requested game state.\n", client->client_id);
     } else {
         printf("[UNCLASSIFIED] Client %d sent: %s\n", client->client_id, buffer);
     }
