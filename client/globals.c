@@ -18,6 +18,6 @@ int                test_keepalive_not_recived = 0; // DONE
 
 char               team1_name[TEAM_NAME_MAX_LENGTH];
 char               team2_name[TEAM_NAME_MAX_LENGTH];
-int                GAME_LENGTH              = 0;
+int                GAME_LENGTH              = 30; /* mirrors server's GAME_LENGTH (server.h) */
 
 Bet                my_bet;
