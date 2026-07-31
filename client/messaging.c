@@ -29,9 +29,50 @@ void handle_interruption(void) {
 int process_server_messages(int sock, pthread_t update_thread) {
     char buf[BUFFER_SIZE];
     char received_group[TEAM_NAME_MAX_LENGTH];
+    int awaiting_halftime_response = 0;
+
+    printf("Press Enter any time to see the current score.\n");
 
     while (1) {
-        int bytes = read(sock, buf, BUFFER_SIZE);
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(sock, &readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        int maxfd = sock > STDIN_FILENO ? sock : STDIN_FILENO;
+
+        int ready = select(maxfd + 1, &readfds, NULL, NULL, NULL);
+        if (ready < 0) {
+            if (errno == EINTR)
+                continue;
+            break;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            char line[64];
+            if (fgets(line, sizeof(line), stdin)) {
+                if (awaiting_halftime_response) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    char response[BUFFER_SIZE];
+                    if (strcmp(line, "YES") == 0 || strcmp(line, "NO") == 0) {
+                        strcpy(response, line);
+                    } else {
+                        printf("Invalid response, defaulting to 'NO'.\n");
+                        strcpy(response, "NO");
+                    }
+                    printf("Sending response: %s\n", response);
+                    send(sock, response, strlen(response), 0);
+                    awaiting_halftime_response = 0;
+                } else {
+                    const char *req = "REQUEST_GAME_STATE";
+                    send(sock, req, strlen(req), 0);
+                }
+            }
+        }
+
+        if (!FD_ISSET(sock, &readfds))
+            continue;
+
+        int bytes = read(sock, buf, BUFFER_SIZE - 1);
         if (bytes <= 0) break;
         buf[bytes] = '\0';
 
@@ -40,20 +81,12 @@ int process_server_messages(int sock, pthread_t update_thread) {
 
         } else if (strstr(buf, "HALFTIME")) {
             halftime_received = 1;
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF);
             printf("Do you want to double your bet? (YES/NO): ");
             fflush(stdout);
-            char response[BUFFER_SIZE];
-            scanf("%s", response);
+            awaiting_halftime_response = 1;
 
-            if (strcmp(response, "YES") != 0 && strcmp(response, "NO") != 0) {
-                printf("Invalid response, defaulting to 'NO'.\n");
-                strcpy(response, "NO");
-            }
-
-            printf("Sending response: %s\n", response);
-            send(sock, response, strlen(response), 0);
+        } else if (strstr(buf, "Minute")) {
+            printf("[GAME STATE] %s", buf);
 
         } else if (strstr(buf, "Congratulations!") || strstr(buf, "Sorry")) {
             // Validate that the final message matches our bet

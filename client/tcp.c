@@ -76,8 +76,10 @@ int authenticate_with_server(int sock) {
         return -1;
     } else {
         int remaining_time;
-        if (sscanf(buf, "WELCOME_DATA:%99[^:]:%99[^:]:%d",
-                   team1_name, team2_name, &remaining_time) == 3) {
+        int server_game_length;
+        if (sscanf(buf, "WELCOME_DATA:%99[^:]:%99[^:]:%d:%d",
+                   team1_name, team2_name, &remaining_time, &server_game_length) == 4) {
+            GAME_LENGTH = server_game_length; /* server is authoritative, not a local guess */
             printf("Welcome! The game between %s vs %s starts in %d seconds.\n",
                    team1_name, team2_name, remaining_time);
         } else {
