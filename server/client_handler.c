@@ -146,10 +146,11 @@ void handle_new_connection(int socket_fd, int epoll_fd, ServerContext *ctx) {
         if (remaining_time < 0)
             remaining_time = 0;
 
-        snprintf(buffer, BUFFER_SIZE, "WELCOME_DATA:%s:%s:%d",
+        snprintf(buffer, BUFFER_SIZE, "WELCOME_DATA:%s:%s:%d:%d",
                  ctx->game_state.group1,
                  ctx->game_state.group2,
-                 remaining_time);
+                 remaining_time,
+                 GAME_LENGTH);
 
         if (!test_drop_password)
             send(client_fd, buffer, strlen(buffer), 0);
