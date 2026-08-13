@@ -6,6 +6,7 @@ SocketGambleGame is a multiplayer server-client application where users place be
 ## Documentation
 
 - **[DOCS — תיעוד מלא (עברית)](docs/DOCS.md)** — פרוטוקול, epoll, producer/consumer, HEAD/TAIL, mutexes, לקוח, סנריו הרצה, מקרי קצה, צווארי בקבוק, flow diagrams.
+- **[Monitor Pattern Explained (English)](docs/MONITOR_EXPLAINED.md)** — interview-style walkthrough: motivation, backpressure, circular buffer, head/tail walk-through.
 - [ארכיטקטורה — סיכום (עברית)](docs/ARCHITECTURE_HE.md)
 
 ## Server Architecture

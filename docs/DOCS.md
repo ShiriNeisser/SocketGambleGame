@@ -28,6 +28,12 @@
 
 ---
 
+## See also (English)
+
+- **[Monitor Pattern Explained — interview-style walkthrough](./MONITOR_EXPLAINED.md)** — motivation, backpressure, why circular buffer, head/tail step-by-step with diagrams.
+
+---
+
 ## 1. סקירה כללית
 
 SocketGambleGame הוא שרת-לקוח multiplayer לסימולציית הימורים על משחק כדורגל.  
