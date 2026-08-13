@@ -5,7 +5,8 @@ SocketGambleGame is a multiplayer server-client application where users place be
 
 ## Documentation
 
-- **[ארכיטקטורת Epoll + Thread Pool (עברית)](docs/ARCHITECTURE_HE.md)** — לוגיקת epoll, Producer/Consumer, HEAD/TAIL, מקרי קצה, צווארי בקבוק, flow diagrams וסנריו הרצה.
+- **[DOCS — תיעוד מלא (עברית)](docs/DOCS.md)** — פרוטוקול, epoll, producer/consumer, HEAD/TAIL, mutexes, לקוח, סנריו הרצה, מקרי קצה, צווארי בקבוק, flow diagrams.
+- [ארכיטקטורה — סיכום (עברית)](docs/ARCHITECTURE_HE.md)
 
 ## Server Architecture
 
