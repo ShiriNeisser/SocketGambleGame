@@ -3,6 +3,10 @@
 # SocketGambleGame
 SocketGambleGame is a multiplayer server-client application where users place bets on simulated matches. It uses TCP for client communication and UDP multicast for game updates, showcasing socket programming and basic betting logic in a networked environment.
 
+## Documentation
+
+- **[ארכיטקטורת Epoll + Thread Pool (עברית)](docs/ARCHITECTURE_HE.md)** — לוגיקת epoll, Producer/Consumer, HEAD/TAIL, מקרי קצה, צווארי בקבוק, flow diagrams וסנריו הרצה.
+
 ## Server Architecture
 
 Three server architectures were built and load-tested against the same protocol: **thread-per-client** (one pthread per connection, blocking `recv`), **event-driven** (single-threaded epoll reactor), and **epoll + thread pool** (epoll reactor dispatching short jobs to a fixed 4-worker pool). `main` now ships the epoll + thread-pool implementation — across every measured scale it finished the match fastest, kept memory flat, and shut down cleanly, while the other two either grew unbounded (threads) or hung after the game (single-threaded epoll's blocking `epoll_wait`/`accept`).
