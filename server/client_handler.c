@@ -117,7 +117,6 @@ void handle_new_connection(int socket_fd, int epoll_fd, ServerContext *ctx) {
         client->client_id = client_count;
         client->connected = 0;
         client->bet_received = 0;
-        client->recive_halftime = 0;
         client->last_keep_alive = time(NULL);
         client->ctx = ctx;
         client->state = CLIENT_WAIT_AUTH;
@@ -324,16 +323,6 @@ void handle_game_message(Client *client, char *buffer) {
             close(client->socket);
             client->socket = -1;
         }
-    } else if (strstr(buffer, "REQUEST_HALFTIME_MESSAGE")) {
-        const char *msg =
-            "HALFTIME: Do you want to double your bet? Reply with 'YES' or 'NO'.\n";
-        send(client->socket, msg, strlen(msg), 0);
-    } else if (strstr(buffer, "YES") || strstr(buffer, "NO")) {
-        client->recive_halftime = 1;
-        if (strstr(buffer, "YES"))
-            client->bet_amount *= 2;
-        printf("Client %d chose %s at halftime.\n",
-               client->client_id, strstr(buffer, "YES") ? "YES" : "NO");
     } else if (strncmp(buffer, "REQUEST_FINAL_MESSAGE", 21) == 0) {
         send_final_message(client, 0);
     } else if (strstr(buffer, "REQUEST_GAME_STATE")) {

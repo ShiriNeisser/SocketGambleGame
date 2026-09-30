@@ -54,10 +54,10 @@ The server script is responsible for managing the game simulation, handling clie
    UDP multicast is used to broadcast real-time game updates to all connected clients, providing a lightweight and efficient way to share information.
 2) *Client Management:* The server maintains a list of connected clients using a dynamically allocated array of Client structs, each containing details about the client's socket, betting status, and other metadata.Clients are handled in separate threads, allowing multiple clients to interact with the server concurrently without blocking.
 3) *Game Simulation:*  The server simulates a game between two randomly assigned teams, broadcasting the score updates and current game minute via UDP multicast.
-    At halftime, the server sends a special message asking clients if they want to double their bets. It waits for client responses and handles defaulting to 'NO' if no response is received.
+    The stake placed before kickoff stays fixed for the whole match.
   
 4) *Keep-Alive Mechanism:* A dedicated thread monitors the keep-alive messages from each client to ensure they are still connected. If a client misses keep-alive messages, the server disconnects them.
-5) *Error Handling and Testing:* The server includes several test flags (`test_drop_halftime`, `test_multicast_to_wrong_receiver`) to simulate errors and test the robustness of the protocol.
+5) *Error Handling and Testing:* The server includes a test flag (`test_multicast_to_wrong_receiver`) to simulate errors and test the robustness of the protocol.
 The server can also handle signals (SIGINT, SIGTSTP) to gracefully close connections and shut down.
 
 6) *Final Results:* After the game concludes, the server sends final results to each client based on their bets, including whether they won or lost.
@@ -69,11 +69,11 @@ The client script connects to the server, allows the user to authenticate, place
 
 1) *TCP and UDP Sockets:* Uses TCP for reliable communication with the server (authentication, betting, game results) and UDP multicast to receive real-time game updates like score changes.
 
-2) *Game Interaction:* Authenticates with the server using a password, places bets on the game, and can choose to double the bet during halftime based on server prompts.
+2) *Game Interaction:* Authenticates with the server using a password and places a bet on the game. The stake does not change after it is placed.
 
 3) **Keep-Alive Mechanism:** Periodically sends keep-alive messages to the server to maintain the connection; includes a `test_keepalive_not_recived` flag for testing keep-alive failure scenarios.
 
-4) *Error Handling:* Manages missed or unexpected messages, allowing the client to request missing information, such as halftime prompts, and handles server interruptions gracefully.
+4) *Error Handling:* Manages missed or unexpected messages, allowing the client to request the correct final result, and handles server interruptions gracefully.
 
 5) *Signal Handling:* Responds to interruptions (e.g., Ctrl+C or Ctrl+Z) by notifying the server and safely closing connections to release resources properly.
 

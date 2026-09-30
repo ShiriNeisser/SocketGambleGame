@@ -10,8 +10,6 @@ struct ip_mreqn    mreq;
 int                DebugMode                = 0;
 int                ready_to_receive_updates = 0;
 int                stop_udp_listener        = 0;
-int                halftime_received        = 0;
-int                current_minute           = 0;
 char               buffer[BUFFER_SIZE]      = {0};
 int                show_keep_alive_print    = 0;
 int                test_keepalive_not_recived = 0; // DONE

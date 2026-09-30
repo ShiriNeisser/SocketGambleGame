@@ -25,7 +25,6 @@ int DebugMode               = 0;
 //};
 */
 // ─── Test Flags ───────────────────────────────────────────────────────────────
-int test_drop_halftime              = 0;  // DONE
 int test_multicast_to_wrong_reciver = 0;  // DONE
 int test_keepalive                  = 0;  // Implemented in client
 int disable_keep_alive_check        = 0;

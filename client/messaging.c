@@ -29,7 +29,6 @@ void handle_interruption(void) {
 int process_server_messages(int sock, pthread_t update_thread) {
     char buf[BUFFER_SIZE];
     char received_group[TEAM_NAME_MAX_LENGTH];
-    int awaiting_halftime_response = 0;
 
     printf("Press Enter any time to see the current score.\n");
 
@@ -50,22 +49,8 @@ int process_server_messages(int sock, pthread_t update_thread) {
         if (FD_ISSET(STDIN_FILENO, &readfds)) {
             char line[64];
             if (fgets(line, sizeof(line), stdin)) {
-                if (awaiting_halftime_response) {
-                    line[strcspn(line, "\r\n")] = '\0';
-                    char response[BUFFER_SIZE];
-                    if (strcmp(line, "YES") == 0 || strcmp(line, "NO") == 0) {
-                        strcpy(response, line);
-                    } else {
-                        printf("Invalid response, defaulting to 'NO'.\n");
-                        strcpy(response, "NO");
-                    }
-                    printf("Sending response: %s\n", response);
-                    send(sock, response, strlen(response), 0);
-                    awaiting_halftime_response = 0;
-                } else {
-                    const char *req = "REQUEST_GAME_STATE";
-                    send(sock, req, strlen(req), 0);
-                }
+                const char *req = "REQUEST_GAME_STATE";
+                send(sock, req, strlen(req), 0);
             }
         }
 
@@ -78,12 +63,6 @@ int process_server_messages(int sock, pthread_t update_thread) {
 
         if (strstr(buf, "interrupted")) {
             handle_interruption();
-
-        } else if (strstr(buf, "HALFTIME")) {
-            halftime_received = 1;
-            printf("Do you want to double your bet? (YES/NO): ");
-            fflush(stdout);
-            awaiting_halftime_response = 1;
 
         } else if (strstr(buf, "Minute")) {
             printf("[GAME STATE] %s", buf);

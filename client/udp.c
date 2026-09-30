@@ -46,16 +46,6 @@ void *listen_for_updates(void *arg) {
     (void)arg;
     char buf[BUFFER_SIZE];
 
-    /* Wall-clock anchor for the match start, used by the halftime-recovery
-     * check below. Broadcasts are goal-only now, so a "Minute" message is not
-     * guaranteed to land anywhere near minute GAME_LENGTH/2 - the recovery
-     * check can no longer wait for one. Anchored off the last pre-game
-     * "remaining" countdown tick (remaining == 0); if that broadcast is ever
-     * missed, the first "Minute" message backdates the anchor instead
-     * (current_minute seconds have already elapsed at 1 real second/minute). */
-    time_t match_start = 0;
-    int halftime_check_done = 0;
-
     while (!stop_udp_listener) {
         fd_set readfds;
         struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
@@ -83,25 +73,13 @@ void *listen_for_updates(void *arg) {
                 if (strstr(buf, "interrupted")) {
                     handle_interruption();
 
-                } else if (strstr(buf, "HALFTIME")) {
-                    printf("[ERROR] Halftime arrived via UDP instead of TCP!\n");
-                    halftime_received = 1;
-
                 } else if (strstr(buf, "Minute")) {
                     if (DebugMode) printf("[UDP-GAME] ");
                     printf("%s", buf);
-                    sscanf(buf, "Minute %d:", &current_minute);
-                    if (match_start == 0)
-                        match_start = time(NULL) - current_minute;
 
                 } else if (strstr(buf, "remaining")) {
                     if (DebugMode) printf("[REMAINING] ");
                     printf("%s", buf);
-                    int remaining = -1;
-                    if (sscanf(buf, "Time remaining until the game starts: %d", &remaining) == 1
-                        && remaining <= 0 && match_start == 0) {
-                        match_start = time(NULL);
-                    }
 
                 } else if (strstr(buf, "Congratulations!") || strstr(buf, "Sorry")) {
                     printf("[ERROR] Final result arrived via UDP instead of TCP!\n");
@@ -111,27 +89,6 @@ void *listen_for_updates(void *arg) {
                 }
             }
         }
-
-        // Halftime-recovery check: runs every loop iteration (the select()
-        // timeout guarantees ~1s cadence regardless of UDP traffic), so it
-        // no longer depends on a broadcast landing at exactly minute
-        // GAME_LENGTH/2 - goal-only broadcasts may skip that minute entirely.
-        if (!halftime_check_done && match_start != 0 &&
-            time(NULL) - match_start >= GAME_LENGTH / 2) {
-            halftime_check_done = 1;
-            if (!halftime_received) {
-                printf("Halftime message not received, requesting from server...\n");
-                const char *req = "REQUEST_HALFTIME_MESSAGE";
-                send(tcp_socket, req, strlen(req), 0);
-            }
-        }
-    }
-
-    // Request halftime message if it was never received
-    if (!halftime_received && ready_to_receive_updates) {
-        const char *req = "REQUEST_HALFTIME_MESSAGE";
-        send(tcp_socket, req, strlen(req), 0);
-        printf("Requested halftime message from server.\n");
     }
 
     close(udp_multicast_socket);

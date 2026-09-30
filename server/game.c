@@ -160,26 +160,6 @@ void *simulate_game(void *arg) {
             printf("%s", update);
         }
 
-        if (j == GAME_LENGTH / 2) {
-            printf("HALF TIME IN THE SIMULATION\n");
-            pthread_mutex_lock(&lock);
-            ctx->game_state.phase = GAME_PHASE_HALFTIME;
-            pthread_mutex_unlock(&lock);
-            broadcast_half_time_message(ctx);
-            sleep(HalfTimer_respose);
-
-            pthread_mutex_lock(&lock);
-            ctx->game_state.phase = GAME_PHASE_SECOND_HALF;
-            for (int i = 0; i < client_count; i++) {
-                if (clients[i] && !clients[i]->recive_halftime) {
-                    printf("Client %d did not respond to halftime, assuming 'NO'.\n",
-                           clients[i]->client_id);
-                    clients[i]->recive_halftime = 1;
-                }
-            }
-            pthread_mutex_unlock(&lock);
-        }
-
         sleep(1);
     }
 
