@@ -91,8 +91,8 @@ int process_server_messages(int sock, pthread_t update_thread) {
         } else if (strstr(buf, "Congratulations!") || strstr(buf, "Sorry")) {
             // Validate that the final message matches our bet
             int matched =
-                sscanf(buf, "Congratulations! You won your bet of %*d $ on %99s", received_group) == 1 ||
-                sscanf(buf, "Sorry, you lost your bet of %*d $ on %99s",           received_group) == 1;
+                sscanf(buf, "Congratulations! You won %*d $ on %99s", received_group) == 1 ||
+                sscanf(buf, "Sorry, you lost your bet of %*d $ on %99s", received_group) == 1;
 
             if (matched) {
                 if (strcmp(my_bet.my_group, received_group) == 0) {

@@ -66,6 +66,7 @@ typedef struct {
     int client_id;
     int bet_team;
     int bet_amount;
+    double bet_odds;    /* decimal odds locked when the bet is placed */
     int bet_received;
     int recive_halftime;
     char comments[BUFFER_SIZE];
@@ -82,6 +83,13 @@ typedef struct {
     int halftime;
     char group1[TEAM_NAME_MAX_LENGTH];
     char group2[TEAM_NAME_MAX_LENGTH];
+    int rating1;
+    int rating2;
+    double lambda1;     /* expected goals for group1 */
+    double lambda2;     /* expected goals for group2 */
+    double odds_team1;  /* decimal odds, stake returned times this on a win */
+    double odds_team2;
+    double odds_tie;
     GamePhase phase;
 } GameState;
 
@@ -137,7 +145,6 @@ void  log_client_message(Client *client, const char *message);
 void  send_final_message(Client *client, int wrong_message);
 
 void *simulate_game(void *arg);
-void  shuffle_countries(char *shuffled[], int n);
 void  assign_teams(GameState *gs);
 void  format_game_update(char *update, size_t buf_size, const GameState *gs);
 
