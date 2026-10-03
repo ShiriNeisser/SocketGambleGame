@@ -117,7 +117,6 @@ void handle_new_connection(int socket_fd, int epoll_fd, ServerContext *ctx) {
         client->client_id = client_count;
         client->connected = 0;
         client->bet_received = 0;
-        client->recive_halftime = 0;
         client->last_keep_alive = time(NULL);
         client->ctx = ctx;
         client->state = CLIENT_WAIT_AUTH;
@@ -162,40 +161,74 @@ void handle_new_connection(int socket_fd, int epoll_fd, ServerContext *ctx) {
     }
 }
 
+static double odds_for_selection(const GameState *gs, int team) {
+    if (team == 1)
+        return gs->odds_team1;
+    if (team == 2)
+        return gs->odds_team2;
+    if (team == 0)
+        return gs->odds_tie;
+    return 0.0;
+}
+
+static const char *group_for_selection(const GameState *gs, int team) {
+    if (team == 0)
+        return "tie";
+    if (team == 1)
+        return gs->group1;
+    return gs->group2;
+}
+
+static int selection_won(int team, const GameState *gs) {
+    return (team == 1 && gs->score[0] > gs->score[1]) ||
+           (team == 2 && gs->score[1] > gs->score[0]) ||
+           (team == 0 && gs->score[0] == gs->score[1]);
+}
+
+/* Stake times the locked decimal odds, rounded to the nearest dollar. */
+static int payout_amount(int stake, double odds) {
+    if (stake <= 0 || odds <= 0.0)
+        return 0;
+    return (int)(stake * odds + 0.5);
+}
+
+static void format_result_message(char *result, size_t len, int won,
+                                  int stake, double odds, const char *group) {
+    if (won) {
+        snprintf(result, len,
+                 "Congratulations! You won %d $ on %s (bet %d $ at %.2f)\n",
+                 payout_amount(stake, odds), group, stake, odds);
+    } else {
+        snprintf(result, len,
+                 "Sorry, you lost your bet of %d $ on %s\n",
+                 stake, group);
+    }
+}
+
 void send_final_message(Client *client, int wrong_message) {
     if (!client || !client->connected || client->socket < 0)
         return;
 
     char result[BUFFER_SIZE];
     GameState *gs = &client->ctx->game_state;
-    const char *correct_group = (client->bet_team == 0) ? "tie"
-                              : (client->bet_team == 1) ? gs->group1
-                                                        : gs->group2;
+    const char *correct_group = group_for_selection(gs, client->bet_team);
 
     printf("Preparing to send final message to client %d.\n", client->client_id);
 
     if (wrong_message) {
-        Client temp = *client;
-        temp.bet_team = (client->bet_team + 1) % 3;
-        const char *wg = (temp.bet_team == 0) ? "tie"
-                       : (temp.bet_team == 1) ? gs->group1
-                                              : gs->group2;
-        int won = (temp.bet_team == 1 && gs->score[0] > gs->score[1]) ||
-                  (temp.bet_team == 2 && gs->score[1] > gs->score[0]) ||
-                  (temp.bet_team == 0 && gs->score[0] == gs->score[1]);
-        snprintf(result, BUFFER_SIZE, won
-                 ? "Congratulations! You won your bet of %d $ on %s\n"
-                 : "Sorry, you lost your bet of %d $ on %s\n",
-                 temp.bet_amount, wg);
+        int fake_team = (client->bet_team + 1) % 3;
+        const char *wg = group_for_selection(gs, fake_team);
+        int won = selection_won(fake_team, gs);
+        format_result_message(result, BUFFER_SIZE, won,
+                              client->bet_amount,
+                              odds_for_selection(gs, fake_team),
+                              wg);
         printf("Simulating wrong message for client %d.\n", client->client_id);
     } else {
-        int won = (client->bet_team == 1 && gs->score[0] > gs->score[1]) ||
-                  (client->bet_team == 2 && gs->score[1] > gs->score[0]) ||
-                  (client->bet_team == 0 && gs->score[0] == gs->score[1]);
-        snprintf(result, BUFFER_SIZE, won
-                 ? "Congratulations! You won your bet of %d $ on %s\n"
-                 : "Sorry, you lost your bet of %d $ on %s\n",
-                 client->bet_amount, correct_group);
+        int won = selection_won(client->bet_team, gs);
+        format_result_message(result, BUFFER_SIZE, won,
+                              client->bet_amount, client->bet_odds,
+                              correct_group);
         printf("Sent correct final message to client %d: %s\n",
                client->client_id, result);
     }
@@ -249,10 +282,10 @@ void handle_auth_message(Client *client, char *buffer) {
     }
 
     char msg[BUFFER_SIZE];
+    GameState *gs = &client->ctx->game_state;
     snprintf(msg, BUFFER_SIZE,
-             "Password accepted. Place your bet (0): tie, (1): %s, (2): %s) and amount (BY DOLLARS): ",
-             client->ctx->game_state.group1,
-             client->ctx->game_state.group2);
+             "Password accepted. Place your bet (0) tie @ %.2f, (1) %s @ %.2f, (2) %s @ %.2f and amount (BY DOLLARS): ",
+             gs->odds_tie, gs->group1, gs->odds_team1, gs->group2, gs->odds_team2);
 
     send(client->socket, msg, strlen(msg), 0);
     client->state = CLIENT_WAIT_BET;
@@ -268,12 +301,13 @@ void handle_bet_message(Client *client, char *buffer) {
 
     client->connected = 1;
     client->bet_received = 1;
+    client->bet_odds = odds_for_selection(&client->ctx->game_state, client->bet_team);
     client->state = CLIENT_IN_GAME;
 
     log_client_message(client, buffer);
 
-    printf("Client %d placed bet: team %d, amount %d.\n",
-           client->client_id, client->bet_team, client->bet_amount);
+    printf("Client %d placed bet: team %d, amount %d, odds %.2f.\n",
+           client->client_id, client->bet_team, client->bet_amount, client->bet_odds);
 }
 
 void handle_game_message(Client *client, char *buffer) {
@@ -289,16 +323,6 @@ void handle_game_message(Client *client, char *buffer) {
             close(client->socket);
             client->socket = -1;
         }
-    } else if (strstr(buffer, "REQUEST_HALFTIME_MESSAGE")) {
-        const char *msg =
-            "HALFTIME: Do you want to double your bet? Reply with 'YES' or 'NO'.\n";
-        send(client->socket, msg, strlen(msg), 0);
-    } else if (strstr(buffer, "YES") || strstr(buffer, "NO")) {
-        client->recive_halftime = 1;
-        if (strstr(buffer, "YES"))
-            client->bet_amount *= 2;
-        printf("Client %d chose %s at halftime.\n",
-               client->client_id, strstr(buffer, "YES") ? "YES" : "NO");
     } else if (strncmp(buffer, "REQUEST_FINAL_MESSAGE", 21) == 0) {
         send_final_message(client, 0);
     } else if (strstr(buffer, "REQUEST_GAME_STATE")) {

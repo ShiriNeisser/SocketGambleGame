@@ -25,29 +25,6 @@ void broadcast_game_update(const char *message) {
         printf("Broadcasted: %s", message);
 }
 
-void broadcast_half_time_message(ServerContext *ctx) {
-    char buffer[BUFFER_SIZE];
-    snprintf(buffer, BUFFER_SIZE,
-             "HALFTIME: Do you want to double your bet? Reply with 'YES' or 'NO'.\n");
-
-    pthread_mutex_lock(&lock);
-    for (int i = 0; i < client_count; i++) {
-        if (!clients[i] || !clients[i]->connected)
-            continue;
-        if (test_drop_halftime) {
-            printf("Simulating dropped halftime message for client %d.\n",
-                   clients[i]->client_id);
-            continue;
-        }
-        send(clients[i]->socket, buffer, strlen(buffer), 0);
-        printf("Sent halftime message to client %d.\n", clients[i]->client_id);
-    }
-    ctx->game_state.halftime = 1;
-    pthread_mutex_unlock(&lock);
-
-    printf("Broadcasted halftime message to all clients.\n");
-}
-
 void *broadcast_remaining_time(void *arg) {
     ServerContext *ctx = (ServerContext *)arg;
     char buffer[BUFFER_SIZE];

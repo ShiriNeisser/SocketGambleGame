@@ -33,7 +33,6 @@
 #define SECRET_PASSWORD       "1234"
 #define AUTH_TIMEOUT_SEC      15
 #define BET_TIMEOUT_SEC       15
-#define HalfTimer_respose     10          /* Seconds to wait for halftime response */
 #define MAX_GAMES             5
 
 #define waiting   0
@@ -66,8 +65,8 @@ typedef struct {
     int client_id;
     int bet_team;
     int bet_amount;
+    double bet_odds;    /* decimal odds locked when the bet is placed */
     int bet_received;
-    int recive_halftime;
     char comments[BUFFER_SIZE];
     int connected;
     time_t last_keep_alive;
@@ -79,9 +78,15 @@ typedef struct {
     int score[2];
     int current_minute;
     int game_running;
-    int halftime;
     char group1[TEAM_NAME_MAX_LENGTH];
     char group2[TEAM_NAME_MAX_LENGTH];
+    int rating1;
+    int rating2;
+    double lambda1;     /* expected goals for group1 */
+    double lambda2;     /* expected goals for group2 */
+    double odds_team1;  /* decimal odds, stake returned times this on a win */
+    double odds_team2;
+    double odds_tie;
     GamePhase phase;
 } GameState;
 
@@ -113,7 +118,6 @@ extern int DebugMode;
 #define NUM_COUNTRIES 10
 
 /* ─── Test Flags (defined in globals.c) ─────────────────────────────────────── */
-extern int test_drop_halftime;
 extern int test_multicast_to_wrong_reciver;
 extern int test_keepalive;
 extern int disable_keep_alive_check;
@@ -126,7 +130,6 @@ extern int test_drop_place_bet;
 void  accept_bets(int socket_fd, ServerContext *ctx);
 void  setup_udp_multicast(void);
 void  broadcast_game_update(const char *message);
-void  broadcast_half_time_message(ServerContext *ctx);
 void *broadcast_remaining_time(void *arg);
 void  start_game(ServerContext *ctx);
 void  close_all_client_sockets(void);
@@ -137,7 +140,6 @@ void  log_client_message(Client *client, const char *message);
 void  send_final_message(Client *client, int wrong_message);
 
 void *simulate_game(void *arg);
-void  shuffle_countries(char *shuffled[], int n);
 void  assign_teams(GameState *gs);
 void  format_game_update(char *update, size_t buf_size, const GameState *gs);
 

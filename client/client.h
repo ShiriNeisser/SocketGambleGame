@@ -42,8 +42,6 @@ extern struct ip_mreqn     mreq;
 extern int                 DebugMode;
 extern int                 ready_to_receive_updates;
 extern int                 stop_udp_listener;
-extern int                 halftime_received;
-extern int                 current_minute;
 extern char                buffer[BUFFER_SIZE];
 extern int                 show_keep_alive_print;
 extern int                 test_keepalive_not_recived;
